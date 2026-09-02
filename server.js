@@ -241,7 +241,13 @@ function createApp() {
       cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' }
     })
   );
-  app.use(express.static(__dirname));
+  if (process.env.SERVE_FRONTEND !== 'false') {
+    app.use(express.static(__dirname));
+  }
+
+  app.get('/', (_req, res) => {
+    res.json({ ok: true, service: 'cmc-admin', message: 'Backend is running.' });
+  });
 
   app.use((req, res, next) => {
     if (req.path.startsWith('/api') || req.path === '/admin/login' || req.path === '/admin') {

@@ -9,7 +9,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: FRONTEND_ORIGIN
-        value: https://trendsmedia.com,https://www.trendsmedia.com
+        value: https://trendsmediaconsult.com,https://www.trendsmediaconsult.com
+      - key: SERVE_FRONTEND
+        value: "false"
       - key: SESSION_SECRET
         generateValue: true
       - key: ADMIN_USERNAME
