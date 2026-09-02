@@ -1,0 +1,19 @@
+{
+  "name": "cmc-site-admin",
+  "version": "1.0.0",
+  "description": "Trends Media Consult site with admin dashboard and lead capture",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.7.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "pg": "^8.13.0"
+  }
+}
