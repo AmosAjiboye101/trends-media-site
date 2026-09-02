@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Contact Trends Media Consult to discuss your growth goals."
+    />
+    <title>Contact Us | Trends Media Consult</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" type="image/jpeg" href="logo.jpeg" />
+    <script src="https://js.paystack.co/v1/inline.js"></script>
+    <script src="api-config.js"></script>
+  </head>
+  <body>
+    <div class="announcement">
+      <span class="pulse"></span>
+      We’re welcoming a few new growth partners for Q4
+      <a href="contact.html">
+        Get started <span>↗</span>
+      </a>
+    </div>
+
+    <header class="site-header">
+      <a class="brand" href="index.html" aria-label="Trends Media Consult home">
+        <img src="logo.jpeg" alt="Trends Media Consult logo" />
+      </a>
+
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu">
+        <span></span>
+        <span></span>
+        <span></span>
+        <b>Menu</b>
+      </button>
+
+      <nav class="nav-links" id="site-menu" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="index.html#about-us">About us</a>
+        <a href="index.html#services">Services</a>
+        <a href="contact.html">Contact us</a>
+        <a class="nav-secondary" href="index.html#pricing">Packages</a>
+        <a class="nav-secondary" href="index.html#work">The work</a>
+      </nav>
+
+      <a class="header-cta" href="contact.html">
+        Let's talk <span>↗</span>
+      </a>
+    </header>
+
+    <main class="contact-page section-pad">
+      <section class="contact-hero">
+        <p class="eyebrow">
+          <span class="eyebrow-line"></span>
+          Let's build something real
+        </p>
+
+        <h1>
+          Tell us what<br>
+          <em>you need.</em>
+        </h1>
+
+        <p class="hero-lede">
+          We help businesses sharpen their message, grow their visibility,
+          and turn attention into sales. Share your goals and we’ll be in touch.
+        </p>
+      </section>
+
+      <section class="contact-page-card">
+        <form id="contact-form" class="lead-form" novalidate>
+          <div class="form-row">
+            <label>
+              Full name
+              <input type="text" name="name" placeholder="Your name" required />
+            </label>
+            <label>
+              Email address
+              <input type="email" name="email" placeholder="you@company.com" required />
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>
+              Phone number
+              <input type="tel" name="phone" placeholder="0802 000 0000" />
+            </label>
+            <label>
+              Business name
+              <input type="text" name="business" placeholder="Your brand or company" />
+            </label>
+          </div>
+
+          <div class="form-row single">
+            <label>
+              Service of interest
+              <select name="service">
+                <option value="Social media management">Social media management</option>
+                <option value="Content creation">Content creation</option>
+                <option value="Digital marketing">Digital marketing</option>
+                <option value="Brand strategy">Brand strategy</option>
+                <option value="Growth partnership">Growth partnership</option>
+              </select>
+            </label>
+          </div>
+
+          <label>
+            Tell us a little about your goals
+            <textarea name="message" rows="5" placeholder="What are you hoping to achieve?"></textarea>
+          </label>
+
+          <button class="button button-dark" type="submit">
+            Send enquiry <span>↗</span>
+          </button>
+        </form>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a class="brand footer-brand" href="index.html">
+        <img src="logo.jpeg" alt="Trends Media Consult logo" />
+      </a>
+
+      <p>Show up. Stand out. Grow.</p>
+
+      <div class="footer-links">
+        <a href="mailto:hello@trendsmediaconsult.com">
+          <span class="social-icon icon-email">@</span>
+          <span>Email</span> ↗
+        </a>
+        <a href="https://www.instagram.com/trendsmediaconsult" target="_blank" rel="noopener noreferrer">
+          <span class="social-icon icon-instagram">◎</span>
+          <span>Instagram</span> ↗
+        </a>
+        <a href="https://www.linkedin.com/company/trends-media-consult" target="_blank" rel="noopener noreferrer">
+          <span class="social-icon icon-linkedin">in</span>
+          <span>LinkedIn</span> ↗
+        </a>
+        <a href="index.html">Back to home ↑</a>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
