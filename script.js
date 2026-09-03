@@ -44,6 +44,12 @@ const apiBaseUrl = (window.CMC_API_BASE_URL || '').replace(/\/$/, '');
 
 const apiUrl = (path) => `${apiBaseUrl}${path}`;
 
+const closePaymentModal = () => {
+  if (!paymentModal) return;
+  paymentModal.classList.remove('is-open');
+  paymentModal.setAttribute('aria-hidden', 'true');
+};
+
 fetch(apiUrl('/api/track-visit'), {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
@@ -61,11 +67,6 @@ if (paymentModal && selectedPlan && selectedAmount) {
       document.querySelector('#customer-name').focus();
     });
   });
-
-  const closePaymentModal = () => {
-    paymentModal.classList.remove('is-open');
-    paymentModal.setAttribute('aria-hidden', 'true');
-  };
 
   const modalCloseButton = document.querySelector('.modal-close');
   if (modalCloseButton) modalCloseButton.addEventListener('click', closePaymentModal);
@@ -107,39 +108,31 @@ if (contactForm) {
 }
 
 if (paymentForm && paymentModal) {
-  paymentForm.addEventListener('submit', (event) => {
+  paymentForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const formData = new FormData(paymentForm);
-    const handler = PaystackPop.setup({
-      key: 'pk_live_97b409ef4b1d0f7642dd65f55cf09d60a884d4b0',
-      email: formData.get('email'),
-      amount: activePlan.amount * 100,
-      currency: 'NGN',
-      ref: `CMC-${Date.now()}`,
-      metadata: { custom_fields: [{ display_name: 'Customer name', variable_name: 'customer_name', value: formData.get('name') }, { display_name: 'Plan', variable_name: 'plan', value: activePlan.name }] },
-      callback: async (response) => {
-        closePaymentModal();
-        try {
-          await fetch(apiUrl('/api/payment'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              customer_name: formData.get('name'),
-              email: formData.get('email'),
-              plan: activePlan.name,
-              amount: activePlan.amount,
-              reference: response.reference,
-              status: 'paid'
-            })
-          });
-        } catch (error) {
-          console.error('Payment logging failed', error);
-        }
-        window.location.hash = 'payment-success';
-        alert(`Payment received. Reference: ${response.reference}`);
-      },
-      onClose: () => {}
-    });
-    handler.openIframe();
+    const reference = `CMC-${Date.now()}`;
+
+    try {
+      const response = await fetch(apiUrl('/api/payment'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_name: formData.get('name'),
+          email: formData.get('email'),
+          plan: activePlan.name,
+          amount: activePlan.amount,
+          reference,
+          status: 'pending'
+        })
+      });
+
+      if (!response.ok) throw new Error('Unable to submit payment request');
+      closePaymentModal();
+      paymentForm.reset();
+      alert(`Payment request received. Reference: ${reference}`);
+    } catch (error) {
+      alert('Your payment request could not be submitted right now. Please contact us directly.');
+    }
   });
 }
