@@ -11,7 +11,7 @@ services:
       - key: FRONTEND_ORIGIN
         value: https://trendsmediaconsult.com,https://www.trendsmediaconsult.com
       - key: SERVE_FRONTEND
-        value: "true"
+        value: "false"
       - key: SESSION_SECRET
         generateValue: true
       - key: ADMIN_USERNAME
