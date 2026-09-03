@@ -356,7 +356,15 @@ function createApp() {
     res.json({ ok: true, service: 'cmc-admin', backend: postgresPool ? 'postgres' : 'sqlite' });
   });
 
-  app.get('/api/traffic', async (_req, res) => {
+  const requireAdmin = (req, res, next) => {
+    if (!req.session || !req.session.authenticated) {
+      res.status(401).json({ error: 'Authentication required.' });
+      return;
+    }
+    next();
+  };
+
+  app.get('/api/traffic', requireAdmin, async (_req, res) => {
     const rows = await getAllVisits();
     const actions = await getAllActions();
     const totalVisits = rows.length;
@@ -389,12 +397,12 @@ function createApp() {
     res.json(price);
   });
 
-  app.get('/api/enquiries', async (_req, res) => {
+  app.get('/api/enquiries', requireAdmin, async (_req, res) => {
     const rows = await getAllEnquiries();
     res.json(rows);
   });
 
-  app.get('/api/payments', async (_req, res) => {
+  app.get('/api/payments', requireAdmin, async (_req, res) => {
     const rows = await getAllPayments();
     res.json(rows);
   });
