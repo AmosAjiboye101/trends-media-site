@@ -44,6 +44,14 @@ const apiBaseUrl = (window.CMC_API_BASE_URL || '').replace(/\/$/, '');
 
 const apiUrl = (path) => `${apiBaseUrl}${path}`;
 
+const trackAction = (action, target, details = '') => {
+  fetch(apiUrl('/api/track-action'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: window.location.pathname || '/', action, target, details })
+  }).catch(() => {});
+};
+
 const closePaymentModal = () => {
   if (!paymentModal) return;
   paymentModal.classList.remove('is-open');
@@ -55,6 +63,32 @@ fetch(apiUrl('/api/track-visit'), {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ path: window.location.pathname || '/' })
 }).catch(() => {});
+
+document.addEventListener('click', (event) => {
+  const target = event.target.closest('a, button');
+  if (!target) return;
+  trackAction('click', target.getAttribute('href') || target.dataset.plan || target.textContent.trim().slice(0, 80));
+});
+
+fetch(apiUrl('/api/prices'))
+  .then((response) => response.ok ? response.json() : [])
+  .then((prices) => {
+    prices.forEach((price) => {
+      const amount = Number(price.amount);
+      document.querySelectorAll(`[data-plan="${CSS.escape(price.plan)}"]`).forEach((button) => {
+        button.dataset.amount = String(amount);
+      });
+      document.querySelectorAll(`[data-price-plan="${CSS.escape(price.plan)}"]`).forEach((element) => {
+        const formattedAmount = `₦${amount.toLocaleString('en-NG')}`;
+        if (element.firstChild && element.children.length) {
+          element.firstChild.nodeValue = formattedAmount;
+        } else {
+          element.textContent = formattedAmount;
+        }
+      });
+    });
+  })
+  .catch(() => {});
 
 if (paymentModal && selectedPlan && selectedAmount) {
   document.querySelectorAll('[data-plan][data-amount]').forEach((button) => {

@@ -53,6 +53,24 @@ const sqliteSchema = `
     ip_address TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS actions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    path TEXT NOT NULL,
+    action TEXT NOT NULL,
+    target TEXT,
+    details TEXT,
+    user_agent TEXT,
+    ip_address TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS prices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan TEXT UNIQUE NOT NULL,
+    amount INTEGER NOT NULL,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
 `;
 
 const postgresSchema = `
@@ -93,17 +111,47 @@ const postgresSchema = `
     ip_address TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
   );
+
+  CREATE TABLE IF NOT EXISTS actions (
+    id SERIAL PRIMARY KEY,
+    path TEXT NOT NULL,
+    action TEXT NOT NULL,
+    target TEXT,
+    details TEXT,
+    user_agent TEXT,
+    ip_address TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS prices (
+    id SERIAL PRIMARY KEY,
+    plan TEXT UNIQUE NOT NULL,
+    amount INTEGER NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  );
 `;
+
+const defaultPrices = [
+  ['Starter', 150000],
+  ['Growth', 200000],
+  ['Premium', 320000],
+  ['Social Media Audit & Strategy Document', 60000]
+];
 
 function ensureSQLite() {
   sqliteDb.exec(sqliteSchema);
   sqliteDb.prepare('INSERT OR IGNORE INTO users (username, password_hash) VALUES (?, ?)').run(adminUsername, initialHash);
+  const insertPrice = sqliteDb.prepare('INSERT OR IGNORE INTO prices (plan, amount) VALUES (?, ?)');
+  defaultPrices.forEach(([plan, amount]) => insertPrice.run(plan, amount));
 }
 
 async function ensureHostedSchema() {
   if (!postgresPool) return;
   await postgresPool.query(postgresSchema);
   await postgresPool.query('INSERT INTO users (username, password_hash) VALUES ($1, $2) ON CONFLICT (username) DO NOTHING', [adminUsername, initialHash]);
+  for (const [plan, amount] of defaultPrices) {
+    await postgresPool.query('INSERT INTO prices (plan, amount) VALUES ($1, $2) ON CONFLICT (plan) DO NOTHING', [plan, amount]);
+  }
 }
 
 function toCsv(rows) {
@@ -158,6 +206,48 @@ async function getAllVisits() {
     return result.rows;
   }
   return sqliteDb.prepare('SELECT * FROM visits ORDER BY id DESC').all();
+}
+
+async function getAllActions() {
+  if (postgresPool) {
+    const result = await postgresPool.query('SELECT * FROM actions ORDER BY id DESC');
+    return result.rows;
+  }
+  return sqliteDb.prepare('SELECT * FROM actions ORDER BY id DESC').all();
+}
+
+async function getAllPrices() {
+  if (postgresPool) {
+    const result = await postgresPool.query('SELECT * FROM prices ORDER BY id ASC');
+    return result.rows;
+  }
+  return sqliteDb.prepare('SELECT * FROM prices ORDER BY id ASC').all();
+}
+
+async function updatePrice(plan, amount) {
+  if (postgresPool) {
+    const result = await postgresPool.query(
+      'UPDATE prices SET amount = $1, updated_at = NOW() WHERE plan = $2 RETURNING *',
+      [Number(amount), plan]
+    );
+    return result.rows[0] || null;
+  }
+  sqliteDb.prepare('UPDATE prices SET amount = ?, updated_at = CURRENT_TIMESTAMP WHERE plan = ?').run(Number(amount), plan);
+  return sqliteDb.prepare('SELECT * FROM prices WHERE plan = ?').get(plan) || null;
+}
+
+async function insertAction(payload) {
+  const { path, action, target, details, userAgent, ipAddress } = payload;
+  if (postgresPool) {
+    await postgresPool.query(
+      'INSERT INTO actions (path, action, target, details, user_agent, ip_address) VALUES ($1, $2, $3, $4, $5, $6)',
+      [path, action, target || '', details || '', userAgent || '', ipAddress || 'unknown']
+    );
+    return;
+  }
+  sqliteDb.prepare(
+    'INSERT INTO actions (path, action, target, details, user_agent, ip_address) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(path, action, target || '', details || '', userAgent || '', ipAddress || 'unknown');
 }
 
 async function insertEnquiry(payload) {
@@ -241,13 +331,12 @@ function createApp() {
       cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' }
     })
   );
+  app.get('/', (_req, res) => {
+    res.redirect('/admin/login');
+  });
   if (process.env.SERVE_FRONTEND !== 'false') {
     app.use(express.static(__dirname));
   }
-
-  app.get('/', (_req, res) => {
-    res.json({ ok: true, service: 'cmc-admin', message: 'Backend is running.' });
-  });
 
   app.use((req, res, next) => {
     if (req.path.startsWith('/api') || req.path === '/admin/login' || req.path === '/admin') {
@@ -269,12 +358,35 @@ function createApp() {
 
   app.get('/api/traffic', async (_req, res) => {
     const rows = await getAllVisits();
+    const actions = await getAllActions();
     const totalVisits = rows.length;
     const recentVisits = rows.slice(0, 10).map((visit) => ({
       path: visit.path,
       created_at: visit.created_at
     }));
-    res.json({ totalVisits, recentVisits });
+    res.json({ totalVisits, totalActions: actions.length, recentVisits, recentActions: actions.slice(0, 20) });
+  });
+
+  app.get('/api/prices', async (_req, res) => {
+    res.json(await getAllPrices());
+  });
+
+  app.put('/api/prices/:plan', async (req, res) => {
+    if (!req.session || !req.session.authenticated) {
+      res.status(401).json({ error: 'Authentication required.' });
+      return;
+    }
+    const amount = Number(req.body && req.body.amount);
+    if (!Number.isInteger(amount) || amount < 0) {
+      res.status(400).json({ error: 'Amount must be a non-negative whole number.' });
+      return;
+    }
+    const price = await updatePrice(req.params.plan, amount);
+    if (!price) {
+      res.status(404).json({ error: 'Price not found.' });
+      return;
+    }
+    res.json(price);
   });
 
   app.get('/api/enquiries', async (_req, res) => {
@@ -296,6 +408,26 @@ function createApp() {
       res.json({ ok: true });
     }).catch(() => {
       res.status(500).json({ error: 'Unable to record traffic' });
+    });
+  });
+
+  app.post('/api/track-action', (req, res) => {
+    const { action, target, details } = req.body || {};
+    if (!action) {
+      res.status(400).json({ error: 'Action is required.' });
+      return;
+    }
+    insertAction({
+      path: req.body.path || req.query.path || '/',
+      action,
+      target,
+      details,
+      userAgent: req.headers['user-agent'] || '',
+      ipAddress: req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown'
+    }).then(() => {
+      res.json({ ok: true });
+    }).catch(() => {
+      res.status(500).json({ error: 'Unable to record action' });
     });
   });
 
@@ -423,6 +555,8 @@ function createApp() {
     const enquiries = await getAllEnquiries();
     const payments = await getAllPayments();
     const visits = await getAllVisits();
+    const actions = await getAllActions();
+    const prices = await getAllPrices();
     const stats = {
       companyName: 'Trends Media Consult',
       totalEnquiries: enquiries.length,
@@ -568,11 +702,53 @@ function createApp() {
               </tbody>
             </table>
           </div>
+
+          <div class="layout" style="margin-top:18px;">
+            <div class="panel">
+              <div class="panel-header">
+                <h2>Recent actions</h2>
+                <span class="pill">${actions.length} total</span>
+              </div>
+              <table>
+                <thead><tr><th>Action</th><th>Target</th><th>Page</th><th>Time</th></tr></thead>
+                <tbody>${renderTable(actions.slice(0, 12), ['action', 'target', 'path', 'created_at'])}</tbody>
+              </table>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">
+                <h2>Payment prices</h2>
+                <span class="pill">Editable</span>
+              </div>
+              ${prices.map((price) => `
+                <form method="POST" action="/admin/prices" style="display:grid;grid-template-columns:1fr 130px auto;gap:10px;align-items:center;margin:0 0 10px;">
+                  <input type="hidden" name="plan" value="${price.plan}" />
+                  <label style="font-size:13px;">${price.plan}</label>
+                  <input name="amount" type="number" min="0" step="1" value="${price.amount}" required style="width:100%;padding:10px;border:1px solid var(--line);" />
+                  <button class="button" type="submit">Save</button>
+                </form>
+              `).join('')}
+            </div>
+          </div>
         </div>
       </body>
       </html>`;
 
     res.send(dashboardHtml);
+  });
+
+  app.post('/admin/prices', async (req, res) => {
+    if (!req.session || !req.session.authenticated) {
+      res.redirect('/admin/login');
+      return;
+    }
+    const amount = Number(req.body && req.body.amount);
+    if (!req.body.plan || !Number.isInteger(amount) || amount < 0) {
+      res.status(400).send('Invalid price');
+      return;
+    }
+    await updatePrice(req.body.plan, amount);
+    res.redirect('/admin');
   });
 
   return app;
