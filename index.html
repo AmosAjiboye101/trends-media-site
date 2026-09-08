@@ -55,29 +55,33 @@
 
     <header class="site-header">
 
-      <!-- TRENDS MEDIA CONSULT LOGO -->
-      <a
-        class="brand"
-        href="#top"
-        aria-label="Trends Media Consult home"
-      >
-        <img
-          src="logo.jpeg"
-          alt="Trends Media Consult logo"
-        />
-      </a>
+      <div class="header-start">
+        <!-- TRENDS MEDIA CONSULT LOGO -->
+        <a
+          class="brand"
+          href="#top"
+          aria-label="Trends Media Consult home"
+        >
+          <img
+            src="logo.jpeg"
+            alt="Trends Media Consult logo"
+          />
+        </a>
 
-      <button
-        class="menu-toggle"
-        type="button"
-        aria-expanded="false"
-        aria-controls="site-menu"
-      >
-        <span></span>
-        <span></span>
-        <span></span>
-        <b>Menu</b>
-      </button>
+        <button
+          class="menu-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="site-menu"
+        >
+          <span class="menu-icon" aria-hidden="true">
+            <i></i>
+            <i></i>
+            <i></i>
+          </span>
+          <b>Menu</b>
+        </button>
+      </div>
 
       <nav
         class="nav-links"
@@ -92,7 +96,7 @@
         <a class="nav-secondary" href="#work">The work</a>
       </nav>
 
-      <a class="header-cta" href="contact.html">
+      <a class="header-cta" href="#site-footer">
         Let's talk <span>↗</span>
       </a>
 
@@ -394,147 +398,122 @@
         id="pricing"
       >
 
-        <div class="pricing-heading">
-
-          <div>
-
-            <p class="eyebrow">
-              <span class="eyebrow-line"></span>
-              Choose your momentum
-            </p>
-
-            <h2>
-              Plans built for<br>
-              <em>being seen.</em>
-            </h2>
-
-          </div>
-
-          <p>
-            Start with the right level of support, then grow
-            into what is next. All prices are in Nigerian naira.
-          </p>
-
-        </div>
-
-
         <div class="pricing-grid">
 
-          <article class="price-card">
+  <article class="price-card">
 
-            <span class="price-label">
-              01 / Starter
-            </span>
+    <span class="price-label">
+      01 / Starter
+    </span>
 
-            <h3>Starter</h3>
+    <h3>Starter</h3>
 
-            <p>
-              1–2 platforms · 12 posts/month · basic engagement
-              & monthly report
-            </p>
+    <p>
+      1–2 platforms · 12 posts/month · basic engagement
+      & monthly report
+    </p>
 
-           <strong data-price-plan="Starter">
-  ₦130,000
-  <small>/ month</small>
-</strong>
+    <strong data-price-plan="Starter">
+      ₦130,000
+      <small>/ month</small>
+    </strong>
 
-<button
-  class="pay-button"
-  data-plan="Starter"
-  data-amount="130000"
->
-  Pay for Starter <span>↗</span>
-</button> 
+    <button
+      class="pay-button"
+      data-plan="Starter"
+      data-amount="130000"
+    >
+      Pay for Starter <span>↗</span>
+    </button>
 
-          </article>
-
-
-          <article class="price-card featured-price">
-
-            <span class="price-label">
-              02 / Most popular
-            </span>
-
-            <h3>Growth</h3>
-
-            <p>
-              2–3 platforms · 20 posts/month · Stories/Reels ·
-              community management · monthly strategy call
-            </p>
-
-            <strong>
-              ₦200,000
-              <small>/ month</small>
-            </strong>
-
-            <button
-              class="pay-button"
-              data-plan="Growth"
-              data-amount="200000"
-            >
-              Pay for Growth <span>↗</span>
-            </button>
-
-          </article>
+  </article>
 
 
-          <article class="price-card">
+  <article class="price-card featured-price">
 
-            <span class="price-label">
-              03 / Full presence
-            </span>
+    <span class="price-label">
+      02 / Most popular
+    </span>
 
-            <h3>Premium</h3>
+    <h3>Growth</h3>
 
-            <p>
-              3–4 platforms · 30 posts/month · video/Reels
-              production · ad support · bi-weekly reporting
-            </p>
+    <p>
+      2–3 platforms · 20 posts/month · Stories/Reels ·
+      community management · monthly strategy call
+    </p>
 
-            <strong>
-              ₦320,000
-              <small>/ month</small>
-            </strong>
+    <strong>
+      ₦200,000
+      <small>/ month</small>
+    </strong>
 
-            <button
-              class="pay-button"
-              data-plan="Premium"
-              data-amount="320000"
-            >
-              Pay for Premium <span>↗</span>
-            </button>
+    <button
+      class="pay-button"
+      data-plan="Growth"
+      data-amount="200000"
+    >
+      Pay for Growth <span>↗</span>
+    </button>
 
-          </article>
+  </article>
 
 
-          <article class="price-card custom-price">
+  <article class="price-card">
 
-            <span class="price-label">
-              04 / Made around you
-            </span>
+    <span class="price-label">
+      03 / Full presence
+    </span>
 
-            <h3>Enterprise / Custom</h3>
+    <h3>Premium</h3>
 
-            <p>
-              Multi-brand or multi-platform accounts,
-              dedicated account manager, full content production
-            </p>
+    <p>
+      3–4 platforms · 30 posts/month · video/Reels
+      production · ad support · bi-weekly reporting
+    </p>
 
-            <strong>
-              From ₦600,000
-            </strong>
+    <strong>
+      ₦320,000
+      <small>/ month</small>
+    </strong>
 
-            <a
-              class="pay-button"
-              href="contact.html"
-            >
-              Request a custom quote <span>↗</span>
-            </a>
+    <button
+      class="pay-button"
+      data-plan="Premium"
+      data-amount="320000"
+    >
+      Pay for Premium <span>↗</span>
+    </button>
 
-          </article>
+  </article>
 
-        </div>
 
+  <article class="price-card custom-price">
+
+    <span class="price-label">
+      04 / Made around you
+    </span>
+
+    <h3>Enterprise / Custom</h3>
+
+    <p>
+      Multi-brand or multi-platform accounts,
+      dedicated account manager, full content production
+    </p>
+
+    <strong>
+      ₦600,000
+    </strong>
+
+    <a
+      class="pay-button"
+      href="contact.html"
+    >
+      Request a custom quote <span>↗</span>
+    </a>
+
+  </article>
+
+</div>
 
         <div class="projects-heading">
 
@@ -777,7 +756,7 @@
         </form>
 
         <p class="payment-note">
-          Submit your payment request and our team will contact you to complete payment.
+          You will be redirected securely to Paystack to complete payment.
         </p>
 
       </div>
@@ -805,7 +784,7 @@
 
 
     <!-- FOOTER -->
-    <footer class="site-footer">
+    <footer class="site-footer" id="site-footer">
 
       <!-- TRENDS MEDIA CONSULT LOGO -->
       <a
@@ -832,7 +811,7 @@
 
 
         <a
-          href="https://www.tiktok.com/@consultofficial"
+          href="https://www.tiktok.com/@trendsmediaconsult"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -872,7 +851,7 @@
 
 
         <a
-          href="https://x.com/consultofficial"
+          href="https://x.com/trendsmediaconsult"
           target="_blank"
           rel="noopener noreferrer"
         >
