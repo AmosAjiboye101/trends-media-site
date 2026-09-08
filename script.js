@@ -145,28 +145,34 @@ if (paymentForm && paymentModal) {
   paymentForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const formData = new FormData(paymentForm);
-    const reference = `CMC-${Date.now()}`;
+    const submitButton = paymentForm.querySelector('button[type="submit"]');
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Opening Paystack…';
+    }
 
     try {
-      const response = await fetch(apiUrl('/api/payment'), {
+      const response = await fetch(apiUrl('/api/payment/initialize'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer_name: formData.get('name'),
           email: formData.get('email'),
-          plan: activePlan.name,
-          amount: activePlan.amount,
-          reference,
-          status: 'pending'
+          plan: activePlan.name
         })
       });
 
-      if (!response.ok) throw new Error('Unable to submit payment request');
-      closePaymentModal();
-      paymentForm.reset();
-      alert(`Payment request received. Reference: ${reference}`);
+      const payment = await response.json();
+      if (!response.ok || !payment.authorization_url) {
+        throw new Error(payment.error || 'Unable to start payment');
+      }
+      window.location.assign(payment.authorization_url);
     } catch (error) {
-      alert('Your payment request could not be submitted right now. Please contact us directly.');
+      alert(error.message || 'Your payment could not be started right now. Please try again.');
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Pay ↗';
+      }
     }
   });
 }

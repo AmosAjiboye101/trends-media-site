@@ -13,6 +13,7 @@ const postgresPool = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_U
 
 const adminUsername = process.env.ADMIN_USERNAME || 'admin';
 const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
 const initialHash = bcrypt.hashSync(adminPassword, 10);
 
 const sqliteSchema = `
@@ -132,7 +133,7 @@ const postgresSchema = `
 `;
 
 const defaultPrices = [
-  ['Starter', 150000],
+  ['Starter', 130000],
   ['Growth', 200000],
   ['Premium', 320000],
   ['Social Media Audit & Strategy Document', 60000]
@@ -451,16 +452,64 @@ function createApp() {
     res.status(201).json({ ok: true, id: result.id });
   });
 
-  app.post('/api/payment', async (req, res) => {
-    const { customer_name, email, plan, amount, reference, status } = req.body || {};
+  app.post('/api/payment/initialize', async (req, res) => {
+    const { customer_name, email, plan } = req.body || {};
 
-    if (!customer_name || !email || !plan || !reference) {
-      res.status(400).json({ error: 'Missing payment details.' });
+    if (!customer_name || !email || !plan) {
+      res.status(400).json({ error: 'Name, email, and plan are required.' });
+      return;
+    }
+    if (!paystackSecretKey) {
+      res.status(503).json({ error: 'Online payments are not configured yet.' });
       return;
     }
 
-    const result = await insertPayment({ customer_name, email, plan, amount, reference, status });
-    res.status(201).json({ ok: true, id: result.id });
+    // Look up the amount on the server so a visitor cannot change the price in their browser.
+    const price = (await getAllPrices()).find((item) => item.plan === plan);
+    if (!price) {
+      res.status(400).json({ error: 'The selected plan is not available.' });
+      return;
+    }
+
+    const reference = `CMC-${Date.now()}`;
+    const frontendUrl = (process.env.FRONTEND_ORIGIN || '').split(',')[0].trim().replace(/\/$/, '');
+    const callbackUrl = process.env.PAYSTACK_CALLBACK_URL || (frontendUrl ? `${frontendUrl}/` : undefined);
+
+    try {
+      const paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${paystackSecretKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email,
+          amount: String(Number(price.amount) * 100),
+          currency: 'NGN',
+          reference,
+          callback_url: callbackUrl,
+          metadata: JSON.stringify({ customer_name, plan, amount: Number(price.amount) })
+        })
+      });
+      const paystackData = await paystackResponse.json();
+
+      if (!paystackResponse.ok || !paystackData.status || !paystackData.data?.authorization_url) {
+        res.status(502).json({ error: 'Unable to start the Paystack checkout.' });
+        return;
+      }
+
+      await insertPayment({
+        customer_name,
+        email,
+        plan,
+        amount: Number(price.amount),
+        reference: paystackData.data.reference || reference,
+        status: 'pending'
+      });
+      res.status(201).json({ authorization_url: paystackData.data.authorization_url });
+    } catch (_error) {
+      res.status(502).json({ error: 'Unable to connect to Paystack. Please try again.' });
+    }
   });
 
   app.get('/admin/login', (req, res) => {
