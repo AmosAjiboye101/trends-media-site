@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /payment-return.html
+
+Sitemap: https://trends-media-api.trendsmediaconsult.workers.dev/sitemap.xml
