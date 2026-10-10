@@ -32,6 +32,26 @@ servers or databases.
      `185.199.110.153`, and `185.199.111.153`
    - A `CNAME` record for `www` to `<github-username>.github.io`
 
+### Careers API and applicant email updates
+
+The Careers page and recruitment admin endpoints run on the Cloudflare Worker
+configured in `wrangler.toml`. After changing the Worker or its migrations, run:
+
+1. `npx wrangler d1 migrations apply trends-media-db --remote`
+2. `npx wrangler deploy`
+
+Applicant review emails use Resend. Before enabling them, add and verify a
+sending domain in Resend, create a sending-only API key, and set these Worker
+secrets (the sender address must belong to the verified domain):
+
+1. `npx wrangler secret put RESEND_API_KEY`
+2. `npx wrangler secret put CAREERS_FROM_EMAIL`
+
+Then deploy the Worker again. The admin review form keeps private notes separate
+from the remarks and interview details sent to the applicant. The UI reports
+whether each email was sent; review changes are saved even if email delivery is
+not configured or the email service is temporarily unavailable.
+
 ### Backend on Render
 
 1. Create a new Render Blueprint from this repository.

@@ -1,0 +1,17 @@
+name = "trends-media-api"
+main = "cloudflare/worker.mjs"
+compatibility_date = "2026-10-02"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "trends-media-db"
+database_id = "628ce64a-bffe-4f8f-8d58-af23a329ce68"
+migrations_dir = "cloudflare/migrations"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "trends-media-blog"
+
+[vars]
+FRONTEND_ORIGIN = "https://trendsmediaconsult.com,https://www.trendsmediaconsult.com"
