@@ -30,6 +30,7 @@ jobs:
           mkdir -p _site
           cp index.html contact.html styles.css script.js api-config.js logo.jpeg CNAME payment-return.html robots.txt favicon.ico favicon-16x16.png favicon-32x32.png apple-touch-icon.png _site/
           cp -R blog _site/blog
+          cp -R careers _site/careers
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
