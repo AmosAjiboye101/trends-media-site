@@ -1,0 +1,1 @@
+ALTER TABLE career_jobs ADD COLUMN view_count INTEGER NOT NULL DEFAULT 0;
