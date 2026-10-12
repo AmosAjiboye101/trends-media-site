@@ -1,3 +1,79 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Payment status | Trends Media Consult</title><meta name="robots" content="noindex,nofollow"><link rel="stylesheet" href="styles.css"><link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><script src="api-config.js"></script></head><body><main class="article-main"><p class="eyebrow">Trends Media Consult</p><h1 id="payment-title">Checking your payment…</h1><p id="payment-message" aria-live="polite">We’re confirming the transaction securely with Paystack.</p><a class="article-back" href="/">Return to the website</a></main><script>
-(async()=>{const q=new URLSearchParams(location.search),ref=q.get('reference')||q.get('trxref');const title=document.querySelector('#payment-title'),message=document.querySelector('#payment-message');if(!ref){title.textContent='Payment not completed';message.textContent='No completed payment reference was returned. If you cancelled checkout, no payment was taken.';return}try{const base=(window.CMC_API_BASE_URL||'').replace(/\/$/,'');const r=await fetch(`${base}/api/payment/verify/${encodeURIComponent(ref)}`);const data=await r.json();if(r.ok&&data.ok){title.textContent='Payment confirmed';message.textContent='Your payment was verified successfully. Thank you.'}else{title.textContent='Payment not confirmed';message.textContent='The payment has not been verified as successful. If you completed checkout, please contact us with your payment reference.'}}catch{title.textContent='Unable to confirm payment';message.textContent='Please contact us with your Paystack reference so we can check the transaction.'}})();
-</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Payment status | Trends Media Consult</title>
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <script src="api-config.js"></script>
+  <style>
+    .payment-result{max-width:720px;margin:8vh auto;padding:clamp(28px,7vw,64px);border:1px solid #f2c8ae;border-top:9px solid #ff5a00;border-radius:26px;background:linear-gradient(145deg,#fff0e7,#fff 68%);box-shadow:10px 10px 0 #171717;text-align:center}
+    .payment-mark{display:grid;place-items:center;width:78px;height:78px;margin:0 auto 22px;border-radius:50%;background:#eaf0c5;color:#263000;font-size:42px;font-weight:800}
+    .payment-result h1{margin:14px 0;font-size:clamp(38px,7vw,64px);line-height:1;letter-spacing:-.07em}
+    .payment-result>p:not(.eyebrow){max-width:520px;margin:0 auto 18px;color:#5e554e;font-size:16px;line-height:1.8}
+    .payment-result .next-step{margin:25px auto;padding:18px;border-radius:14px;background:#f1f3d9;color:#373a22;font-weight:700}
+    .payment-actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:28px}
+    .payment-actions a{display:inline-flex;justify-content:center;padding:14px 20px;border:2px solid #171717;border-radius:999px;background:#ff5a00;color:#171717;font-size:11px;font-weight:800;text-decoration:none;text-transform:uppercase}
+    .payment-actions a:last-child{background:#171717;color:#fff}
+    @media(max-width:600px){.payment-result{margin:5vh 6vw;padding:30px 22px;border-radius:20px;box-shadow:6px 6px 0 #171717}.payment-result>p:not(.eyebrow){font-size:15px}.payment-actions{flex-direction:column}.payment-actions a{width:100%;box-sizing:border-box}}
+  </style>
+</head>
+<body>
+  <main class="payment-result" aria-live="polite">
+    <div class="payment-mark" id="payment-mark" aria-hidden="true">…</div>
+    <p class="eyebrow"><span class="eyebrow-line"></span>Trends Media Consult</p>
+    <h1 id="payment-title">Checking your payment…</h1>
+    <p id="payment-message">We’re confirming the transaction securely with Paystack.</p>
+    <p class="next-step" id="payment-next-step" hidden></p>
+    <nav class="payment-actions" aria-label="Next steps">
+      <a href="/">Back to the website</a>
+      <a href="/contact.html">Contact our team</a>
+    </nav>
+  </main>
+  <script>
+    (async () => {
+      const query = new URLSearchParams(location.search);
+      const reference = query.get('reference') || query.get('trxref');
+      const title = document.querySelector('#payment-title');
+      const message = document.querySelector('#payment-message');
+      const mark = document.querySelector('#payment-mark');
+      const nextStep = document.querySelector('#payment-next-step');
+      const setFailure = (heading, text) => {
+        mark.textContent = '!';
+        mark.style.background = '#ffe0d1';
+        mark.style.color = '#7b2800';
+        title.textContent = heading;
+        message.textContent = text;
+      };
+      if (!reference) {
+        setFailure('Payment not completed', 'No payment reference was returned. If you cancelled checkout, no payment was taken.');
+        return;
+      }
+      try {
+        const api = (window.CMC_API_BASE_URL || '').replace(/\/$/, '');
+        let result;
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const response = await fetch(`${api}/api/payment/verify/${encodeURIComponent(reference)}`);
+          result = await response.json();
+          if (response.ok && result.ok) break;
+          if (result.status !== 'pending' || attempt === 4) throw new Error('not-confirmed');
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+        if (!result?.ok) throw new Error('not-confirmed');
+        mark.textContent = '✓';
+        title.textContent = 'Thank you for your payment!';
+        message.textContent = 'Your payment has been confirmed successfully. We appreciate you choosing Trends Media Consult.';
+        nextStep.textContent = 'A member of our team will contact you within 24 hours to discuss the next steps.';
+        nextStep.hidden = false;
+      } catch {
+        setFailure('Payment not confirmed yet', 'We could not confirm this transaction with Paystack. If your account was charged, please contact our team with your payment reference so we can check it.');
+      }
+    })();
+  </script>
+</body>
+</html>

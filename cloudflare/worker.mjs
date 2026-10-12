@@ -414,7 +414,7 @@ async function handleApi(request, env, url) {
   }
   if (pathname === '/api/payments' && method === 'GET') {
     if (!await isAdmin(request, env)) return json({ error: 'Authentication required.' }, 401);
-    return json(await getRows(env.DB, 'SELECT * FROM payments ORDER BY id DESC'));
+    return json(await getRows(env.DB, "SELECT * FROM payments WHERE status = 'paid' ORDER BY id DESC"));
   }
   if (pathname === '/api/traffic' && method === 'GET') {
     if (!await isAdmin(request, env)) return json({ error: 'Authentication required.' }, 401);
@@ -470,7 +470,7 @@ async function handleApi(request, env, url) {
     if (!price) return json({ error: 'The selected plan is not available.' }, 400);
 
     const frontendUrl = (env.FRONTEND_ORIGIN || 'https://trendsmediaconsult.com').split(',')[0].trim().replace(/\/$/, '');
-    const callbackUrl = env.PAYSTACK_CALLBACK_URL || `${frontendUrl}/`;
+    const callbackUrl = `${frontendUrl}/payment-return.html`;
     const reference = `CMC-${Date.now()}`;
     const response = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
@@ -546,7 +546,7 @@ async function renderAdmin(request, env, url) {
   if (pathname === '/admin/export/enquiries.csv' || pathname === '/admin/export/payments.csv') {
     const enquiries = pathname.includes('enquiries');
     const table = enquiries ? 'enquiries' : 'payments';
-    const rows = await getRows(env.DB, `SELECT * FROM ${table} ORDER BY id DESC`);
+    const rows = await getRows(env.DB, enquiries ? 'SELECT * FROM enquiries ORDER BY id DESC' : "SELECT * FROM payments WHERE status = 'paid' ORDER BY id DESC");
     const csvCell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
     const csv = rows.length ? [Object.keys(rows[0]).join(','), ...rows.map((row) => Object.values(row).map(csvCell).join(','))].join('\n') : 'No data available';
     return new Response(csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${table}.csv"` } });
@@ -562,7 +562,7 @@ async function renderAdmin(request, env, url) {
 
   const [enquiries, payments, visits, actions, prices] = await Promise.all([
     getRows(env.DB, 'SELECT * FROM enquiries ORDER BY id DESC'),
-    getRows(env.DB, 'SELECT * FROM payments ORDER BY id DESC'),
+    getRows(env.DB, "SELECT * FROM payments WHERE status = 'paid' ORDER BY id DESC"),
     getRows(env.DB, 'SELECT * FROM visits ORDER BY id DESC'),
     getRows(env.DB, 'SELECT * FROM actions ORDER BY id DESC'),
     getRows(env.DB, 'SELECT * FROM prices ORDER BY id ASC')
