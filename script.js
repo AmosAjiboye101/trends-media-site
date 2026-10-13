@@ -112,11 +112,12 @@ if (paymentModal && selectedPlan && selectedAmount) {
 if (contactForm) {
   contactForm.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (!contactForm.reportValidity()) return;
     const formData = new FormData(contactForm);
     const payload = {
-      name: formData.get('name'),
-      email: formData.get('email'),
-      phone: formData.get('phone'),
+      name: String(formData.get('name') || '').trim(),
+      email: String(formData.get('email') || '').trim(),
+      phone: String(formData.get('phone') || '').trim(),
       business: formData.get('business'),
       service: formData.get('service'),
       message: formData.get('message')
@@ -156,8 +157,8 @@ if (paymentForm && paymentModal) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customer_name: formData.get('name'),
-          email: formData.get('email'),
+          customer_name: String(formData.get('name') || '').trim(),
+          email: String(formData.get('email') || '').trim(),
           plan: activePlan.name
         })
       });

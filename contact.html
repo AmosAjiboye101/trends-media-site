@@ -77,7 +77,7 @@
       </section>
 
       <section class="contact-page-card">
-        <form id="contact-form" class="lead-form" novalidate>
+        <form id="contact-form" class="lead-form">
           <div class="form-row">
             <label>
               Full name
@@ -92,7 +92,7 @@
           <div class="form-row">
             <label>
               Phone number
-              <input type="tel" name="phone" placeholder="0802 000 0000" />
+              <input type="tel" name="phone" placeholder="0802 000 0000" minlength="7" maxlength="30" required />
             </label>
             <label>
               Business name
