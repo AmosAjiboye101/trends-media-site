@@ -163,16 +163,55 @@ async function sendCandidateUpdate(env, application, update) {
   if (!response.ok) return { sent: false, reason: 'The email service rejected the message. Check the sender address and email service settings, then try again.' };
   return { sent: true };
 }
+async function sendAdminNotification(env, subject, title, rows, textLines) {
+  if (!env.RESEND_API_KEY || !(env.NOTIFICATION_FROM_EMAIL || env.CAREERS_FROM_EMAIL)) {
+    console.error('Admin email notifications are not configured. Add RESEND_API_KEY and NOTIFICATION_FROM_EMAIL (or CAREERS_FROM_EMAIL).');
+    return false;
+  }
+  const html = `<h2>${escapeHtml(title)}</h2><table>${rows.map(([label, value]) => `<tr><th align="left" style="padding:6px 12px 6px 0">${escapeHtml(label)}</th><td style="padding:6px 0">${escapeHtml(value || '—')}</td></tr>`).join('')}</table><p>Trends Media Consult website notification.</p>`;
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: env.NOTIFICATION_FROM_EMAIL || env.CAREERS_FROM_EMAIL,
+        to: ['trendsmediaconsult@gmail.com', 'hello@trendsmediaconsult.com'],
+        subject: String(subject).replace(/[\r\n]+/g, ' ').slice(0, 180),
+        html,
+        text: textLines.join('\n')
+      })
+    });
+    if (!response.ok) console.error(`Admin notification email failed with status ${response.status}.`);
+    return response.ok;
+  } catch (error) {
+    console.error('Admin notification email could not be sent.', error);
+    return false;
+  }
+}
+async function sendPaymentNotification(env, payment, status) {
+  const labels = { pending: 'Payment pending', paid: 'Payment successful', failed: 'Payment failed' };
+  const title = labels[status] || `Payment ${status}`;
+  const rows = [
+    ['Status', status.toUpperCase()],
+    ['Customer', payment.customer_name],
+    ['Email', payment.email],
+    ['Plan', payment.plan],
+    ['Amount', `₦${Number(payment.amount || 0).toLocaleString('en-NG')}`],
+    ['Reference', payment.reference]
+  ];
+  return sendAdminNotification(env, `${title}: ${payment.plan} — ₦${Number(payment.amount || 0).toLocaleString('en-NG')}`, title, rows, rows.map(([label, value]) => `${label}: ${value}`));
+}
 async function verifyPayment(env, reference) {
   if (!env.PAYSTACK_SECRET_KEY || !reference) return { ok: false, error: 'Payment verification is not configured.' };
   const response = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, { headers: { Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}` } });
   const result = await response.json();
   if (!response.ok || !result.status || !result.data) return { ok: false, error: 'Unable to verify the payment.' };
-  const expected = await getOne(env.DB, 'SELECT amount, email FROM payments WHERE reference = ?', reference);
+  const expected = await getOne(env.DB, 'SELECT customer_name, email, plan, amount, reference, status FROM payments WHERE reference = ?', reference);
   if (!expected) return { ok: false, error: 'Payment reference not found.' };
   const paid = result.data.status === 'success' && result.data.currency === 'NGN' && Number(result.data.amount) === Number(expected.amount) * 100 && result.data.customer?.email?.toLowerCase() === expected.email.toLowerCase();
   const status = paid ? 'paid' : ['failed','abandoned'].includes(result.data.status) ? 'failed' : 'pending';
-  await env.DB.prepare("UPDATE payments SET status = ? WHERE reference = ? AND status <> 'paid'").bind(status, reference).run();
+  const update = await env.DB.prepare('UPDATE payments SET status = ? WHERE reference = ? AND status <> ?').bind(status, reference, status).run();
+  if (update.meta?.changes) await sendPaymentNotification(env, expected, status);
   return { ok: paid, status: paid ? 'success' : result.data.status };
 }
 
@@ -402,7 +441,7 @@ async function handleApi(request, env, url) {
     const bytes = Uint8Array.from(signature.match(/.{1,2}/g) || [], (byte) => Number.parseInt(byte, 16));
     if (!signature || !await crypto.subtle.verify('HMAC', key, bytes, raw)) return json({ error: 'Invalid signature.' }, 401);
     const event = JSON.parse(new TextDecoder().decode(raw));
-    if (event.event === 'charge.success' && event.data?.reference) await verifyPayment(env, event.data.reference);
+    if (['charge.success', 'charge.failed'].includes(event.event) && event.data?.reference) await verifyPayment(env, event.data.reference);
     return json({ received: true });
   }
   if (pathname === '/api/prices' && method === 'GET') {
@@ -459,38 +498,55 @@ async function handleApi(request, env, url) {
     const result = await env.DB.prepare('INSERT INTO enquiries (name, email, phone, business, service, message, source) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .bind(body.name, body.email, body.phone || '', body.business || '', body.service || '', body.message || '', 'website')
       .run();
+    const rows = [
+      ['Name', body.name], ['Email', body.email], ['Phone', body.phone || ''],
+      ['Business', body.business || ''], ['Service', body.service || ''], ['Message', body.message || '']
+    ];
+    await sendAdminNotification(env, `New website enquiry${body.service ? `: ${body.service}` : ''}`, 'New enquiry received', rows, rows.map(([label, value]) => `${label}: ${value || '—'}`));
     return json({ ok: true, id: result.meta?.last_row_id }, 201);
   }
   if (pathname === '/api/payment/initialize' && method === 'POST') {
     const body = await readBody(request);
     const { customer_name: customerName, email, plan } = body;
     if (!customerName || !email || !plan) return json({ error: 'Name, email, and plan are required.' }, 400);
-    if (!env.PAYSTACK_SECRET_KEY) return json({ error: 'Online payments are not configured yet.' }, 503);
     const price = await getOne(env.DB, 'SELECT plan, amount FROM prices WHERE plan = ?', plan);
     if (!price) return json({ error: 'The selected plan is not available.' }, 400);
+    if (!env.PAYSTACK_SECRET_KEY) {
+      await sendPaymentNotification(env, { customer_name: customerName, email, plan, amount: price.amount, reference: 'Not generated' }, 'failed');
+      return json({ error: 'Online payments are not configured yet.' }, 503);
+    }
 
     const frontendUrl = (env.FRONTEND_ORIGIN || 'https://trendsmediaconsult.com').split(',')[0].trim().replace(/\/$/, '');
     const callbackUrl = `${frontendUrl}/payment-return.html`;
     const reference = `CMC-${Date.now()}`;
-    const response = await fetch('https://api.paystack.co/transaction/initialize', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email,
-        amount: String(Number(price.amount) * 100),
-        currency: 'NGN',
-        reference,
-        callback_url: callbackUrl,
-        metadata: JSON.stringify({ customer_name: customerName, plan, amount: Number(price.amount) })
-      })
-    });
-    const payment = await response.json();
+    let payment;
+    let response;
+    try {
+      response = await fetch('https://api.paystack.co/transaction/initialize', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          amount: String(Number(price.amount) * 100),
+          currency: 'NGN',
+          reference,
+          callback_url: callbackUrl,
+          metadata: JSON.stringify({ customer_name: customerName, plan, amount: Number(price.amount) })
+        })
+      });
+      payment = await response.json();
+    } catch {
+      await sendPaymentNotification(env, { customer_name: customerName, email, plan, amount: price.amount, reference }, 'failed');
+      return json({ error: 'Unable to connect to Paystack. Please try again.' }, 502);
+    }
     if (!response.ok || !payment.status || !payment.data?.authorization_url) {
+      await sendPaymentNotification(env, { customer_name: customerName, email, plan, amount: price.amount, reference: payment.data?.reference || reference }, 'failed');
       return json({ error: 'Unable to start the Paystack checkout.' }, 502);
     }
     await env.DB.prepare('INSERT INTO payments (customer_name, email, plan, amount, reference, status) VALUES (?, ?, ?, ?, ?, ?)')
       .bind(customerName, email, plan, Number(price.amount), payment.data.reference || reference, 'pending')
       .run();
+    await sendPaymentNotification(env, { customer_name: customerName, email, plan, amount: price.amount, reference: payment.data.reference || reference }, 'pending');
     return json({ authorization_url: payment.data.authorization_url }, 201);
   }
   return json({ error: 'Not found.' }, 404);
